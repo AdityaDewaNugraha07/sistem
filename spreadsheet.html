@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0">
+    <!-- <iframe id="sheet" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vT0dYZrbfWV34KZJwyUhdv5daCpZZIbYS6NWiH5D9roob0CP6JFnokYnkcQhb-Naahv_vk96pFZN2Uy/pubhtml?gid=0&single=true"
+            style="width:100vw;height:100vh;border:5;">
+    </iframe> -->
+    <iframe id="sheet" src="https://docs.google.com/spreadsheets/d/1Q6tGd36XFUS0eFZoLKxwBwf8W9FXJ_B6/edit?usp=sharing&ouid=117131594453810035554&rtpof=true&sd=true"
+            style="width:100vw;height:100vh;border:5;">
+    </iframe>
+    
+    <script>
+        // reload setiap 2 menit
+        var loadtime = 2 * 60000;
+        setInterval(function(){
+            var iframe = document.getElementById('sheet');
+            iframe.src = iframe.src.split('?')[0] + '?t=' + new Date().getTime();
+        }, loadtime);
+    </script>
+</body>
+</html>

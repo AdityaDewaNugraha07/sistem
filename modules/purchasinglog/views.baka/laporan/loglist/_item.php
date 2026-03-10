@@ -1,0 +1,49 @@
+<tr>
+    <td class="td-kecil text-center"><?php echo $i;?></td>
+    <td style="text-align: center; padding: 2px; font-size: 10px;">
+		<?= yii\helpers\Html::activeHiddenInput($modDetail, "[ii]loglist_detail_id") ?>
+		<?= yii\helpers\Html::activeHiddenInput($modDetail, "[ii]loglist_id") ?>
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]nomor_grd',['class'=>'form-control','style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','disabled'=>true]); ?></center>
+    </td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]nomor_produksi',['class'=>'form-control','style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','disabled'=>true]); ?></center>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]nomor_batang',['class'=>'form-control','style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','disabled'=>true]); ?></center>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<?= \yii\bootstrap\Html::activeDropDownList($modDetail, '[ii]kayu_id',\app\models\MKayu::getOptionListPlusGroup(),['class'=>'form-control','prompt'=>'','style'=>'padding: 2px; font-size:13px; height:25px;','disabled'=>true]); ?>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]panjang',['class'=>'form-control float','style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','onblur'=>'hitungRata(this); hitungVolume(this)','disabled'=>true]); ?></center>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]diameter_ujung',['class'=>'form-control float','style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','onblur'=>'hitungRata(this); hitungVolume(this)','disabled'=>true]); ?></center>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]diameter_pangkal',['class'=>'form-control float','style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','onblur'=>'hitungRata(this); hitungVolume(this)','disabled'=>true]); ?></center>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]diameter_rata',['class'=>'form-control float','disabled'=>TRUE,'style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','disabled'=>true]); ?></center>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]cacat_panjang',['class'=>'form-control float','style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','onblur'=>'hitungVolume(this)','disabled'=>true]); ?></center>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]cacat_gb',['class'=>'form-control float','style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','onblur'=>'hitungVolume(this)','disabled'=>true]); ?></center>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]cacat_gr',['class'=>'form-control float','style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','onblur'=>'hitungVolume(this)','disabled'=>true]); ?></center>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<?= \yii\bootstrap\Html::activeDropDownList($modDetail, '[ii]volume_range', \app\models\MDefaultValue::getOptionList('volume-range-log'),['class'=>'form-control bs-select','style'=>'padding: 2px; font-size:13px; height:25px;','disabled'=>true]); ?>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 10px;">
+		<center><?= yii\helpers\Html::activeTextInput($modDetail, '[ii]volume_value',['class'=>'form-control','style'=>'padding: 2px; text-align:center; font-size:13px; height:25px;','disabled'=>true]); ?></center>
+	</td>
+	<td style="text-align: center; padding: 2px; font-size: 18px; vertical-align: middle;">
+		<?php $modDetail->is_freshcut = TRUE; ?>
+		<center><?= yii\helpers\Html::activeCheckbox($modDetail, '[ii]is_freshcut',['class'=>'','label'=>'','disabled'=>true]); ?></center>
+	</td>
+    <td style="vertical-align: middle; text-align: center;">L <?php echo $modDetail->lampiran;?></td>
+</tr>

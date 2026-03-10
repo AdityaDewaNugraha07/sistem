@@ -1,0 +1,671 @@
+<?php
+
+namespace app\modules\ppic\controllers;
+
+use Yii;
+use app\controllers\DeltaBaseController;
+
+class TerimasengonController extends DeltaBaseController
+{
+	public $defaultAction = 'index';
+	public function actionIndex(){
+        $model = new \app\models\TTerimaSengonDetail();
+		$model->tgl_awal = date('d/m/Y', strtotime('-10 days'));
+		$model->tgl_akhir = date('d/m/Y');
+        if(\Yii::$app->request->get('dt')=='table-laporan'){
+			if((\Yii::$app->request->get('laporan_params')) !== null){
+				$form_params = []; parse_str(\Yii::$app->request->get('laporan_params'),$form_params); 
+				$model->attributes = $form_params['TTerimaSengonDetail'];
+				$model->tgl_awal = $form_params['TTerimaSengonDetail']['tgl_awal'];
+				$model->tgl_akhir = $form_params['TTerimaSengonDetail']['tgl_akhir'];
+				$model->suplier_id = $form_params['TTerimaSengonDetail']['suplier_id'];
+			}
+			return \yii\helpers\Json::encode(\app\components\SSP::complex( $model->searchLaporanDt() ));
+		}
+		return $this->render('index',['model'=>$model]);
+	}
+    
+    public function actionImportexcel(){
+        if(\Yii::$app->request->isAjax){
+            $model = new \app\models\TTerimaSengon();
+            $model->kode = "AUTO GENERATE";
+            $model->tanggal = date("d/m/Y");
+            $modAttch = new \app\models\TAttachment();
+            
+            if( Yii::$app->request->post('TTerimaSengon')){
+                $transaction = \Yii::$app->db->beginTransaction();
+                try {
+                    $success_1 = false; // t_terima_sengon
+                    $success_2 = true; // t_terima_sengon_detail
+                    $success_3 = false; // t_attachment
+                    $success_4 = true; // h_persediaan_log
+                    $model->load(\Yii::$app->request->post());
+                    
+                    $model->posengon_id = \app\models\TPosengon::findOne(['kode'=>$_POST['TTerimaSengon']['posengon_kode']])->posengon_id;
+                    $JenisLog= \app\models\TPosengon::findOne(['kode'=>$_POST['TTerimaSengon']['posengon_kode']])->nama_barang;
+                    if($JenisLog == 'Log Sengon'){
+                        $model->kode = \app\components\DeltaGenerator::kodeTerimaSengon();                    
+                    }else if($JenisLog == 'Log Jabon'){
+                        $model->kode = \app\components\DeltaGenerator::kodeTerimaJabon();                    
+                    }
+                    
+                    $model->status = "-"; 
+                    $model->file = "-";
+                    if($model->validate()){
+                        if($model->save()){
+                            $success_1 = true;
+                            
+                            // start insert t_attachment
+                            $modAttch->load(\Yii::$app->request->post());
+                            $file = \yii\web\UploadedFile::getInstance($model, 'file');
+                            $dir_path = Yii::$app->basePath.'/web/uploads/fileimport';
+                            if(!empty($file)){
+                                if($file->extension == 'xlsx' || $file->extension == 'xls'){
+                                    $modAttch = new \app\models\TAttachment();
+                                    $modAttch->reff_no = $model->kode;
+                                    $modAttch->file_type = $file->type;
+                                    $modAttch->file_ext = $file->extension;
+                                    $modAttch->file_size = $file->size;
+                                    $modAttch->dir_path = $dir_path;
+                                    $modAttch->seq = 1;
+                                    $randomstring_attch = Yii::$app->getSecurity()->generateRandomString(4);
+                                    $file_path = date('Ymd_His').'-importterimasengon-'.$randomstring_attch.'.'  . $file->extension;
+                                    $modAttch->file_name = $file_path;
+                                    if($modAttch->validate()){
+                                        if($modAttch->save()){
+                                            $success_3 = true;
+                                            
+                                            $file->saveAs($dir_path.'/'.$file_path);
+                                            // start excel reader
+                                            $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader( ucfirst($file->extension) );
+                                            $reader->setReadDataOnly(true);
+                                            $spreadsheet = $reader->load($dir_path.'/'.$file_path);
+                                            $worksheet = $spreadsheet->getActiveSheet();
+                                            $highestRow = $worksheet->getHighestRow(); // e.g. 10
+                                            $highestColumn = $worksheet->getHighestColumn(); // e.g 'F'
+                                            $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn); // e.g. 5
+                                            // end excel reader
+                                            // https://phpspreadsheet.readthedocs.io/en/latest/topics/accessing-cells/#looping-through-cells
+                                            $tot_pcs = 0; $tot_m3 = 0;
+                                            for ($row = 1; $row <= $highestRow; ++$row) {
+                                                if($row != 1){ // menghindari baca header
+                                                    if($success_2 == true){
+                                                        $det = new \app\models\TTerimaSengonDetail();
+                                                        $det->terima_sengon_id = $model->terima_sengon_id;
+                                                        $det->nourut_log = $worksheet->getCellByColumnAndRow(1, $row)->getCalculatedValue();
+                                                        $det->kode_terima = $worksheet->getCellByColumnAndRow(2, $row)->getCalculatedValue()."-".$worksheet->getCellByColumnAndRow(3, $row)->getCalculatedValue(); // kolom no 2&3
+                                                        $det->nourut_datang = $worksheet->getCellByColumnAndRow(4, $row)->getCalculatedValue(); // kolom no 4
+                                                        $det->kode_jenis = $worksheet->getCellByColumnAndRow(5, $row)->getCalculatedValue(); // kolom no 5
+                                                        $det->diameter = $worksheet->getCellByColumnAndRow(6, $row)->getCalculatedValue(); // kolom no 6
+                                                        $det->panjang = $worksheet->getCellByColumnAndRow(7, $row)->getCalculatedValue(); // kolom no 7
+                                                        $det->qty_pcs = number_format( $worksheet->getCellByColumnAndRow(8, $row)->getCalculatedValue() ); // kolom no 8
+//                                                        $det->qty_pcs = 1; // kolom no 8
+                                                        $det->qty_m3 = $worksheet->getCellByColumnAndRow(9, $row)->getCalculatedValue(); // kolom no 9
+                                                        if($det->validate()){
+                                                            if($det->save()){
+                                                                $success_2 &= true;
+                                                                $tot_pcs += $det->qty_pcs;
+                                                                $tot_m3 += $det->qty_m3;
+                                                            }else{
+                                                                $success_2 = false;
+                                                            }
+                                                        }else{
+                                                            $success_2 = false;
+                                                        }
+                                                        
+                                                        // START INSERT h_persediaan_log
+                                                        $reff_no = $model->kode."-".$det->kode_terima;
+                                                        $modPersediaan = new \app\models\HPersediaanLog();
+                                                        
+                                                        $NamaBarang = \app\models\TPosengon::findOne(['kode'=>$_POST['TTerimaSengon']['posengon_kode']])->nama_barang;
+//                                                        echo "<pre>";
+//                                                        print_r($NamaBarang);
+//                                                        exit;
+                                                        
+                                                        if($NamaBarang =='Log Sengon'){
+                                                            $modPersediaan->kayu_id = \app\components\Params::DEFAULT_KAYU_ID_SENGON;
+                                                            $LokasiGudang = "GUDANG LOG SENGON";
+                                                        }elseif($NamaBarang =='Log Jabon'){
+                                                            $modPersediaan->kayu_id = \app\components\Params::DEFAULT_KAYU_ID_JABON;
+                                                            $LokasiGudang = "GUDANG LOG JABON";
+                                                        }
+//                                                        
+                                                        $modPersediaan->tgl_transaksi = $model->tanggal;
+                                                        $modPersediaan->no_grade = "-";
+                                                        $modPersediaan->no_barcode = "-";
+                                                        $modPersediaan->no_btg = "-";
+                                                        $modPersediaan->no_lap = "-";
+                                                        $modPersediaan->status = "IN";
+                                                        $modPersediaan->reff_no = $reff_no;
+                                                        $modPersediaan->lokasi = $LokasiGudang;
+                                                        $modPersediaan->fisik_diameter = $det->diameter;
+                                                        $modPersediaan->fisik_panjang = $det->panjang;
+                                                        $modPersediaan->fisik_reduksi = "-";
+                                                        $modPersediaan->fisik_volume = $det->qty_m3;
+                                                        $modPersediaan->fisik_pcs = $det->qty_pcs;
+                                                        if($modPersediaan->validate()){
+                                                            if($modPersediaan->save()){
+                                                                $success_4 = true;
+                                                            }else{
+                                                                $success_4 = false;
+                                                            }
+                                                        }else{
+                                                            $success_4 = false;
+                                                        }
+                                                        // END INSERT h_persediaan_log
+                                                    }
+                                                }
+                                            }
+                                            
+                                            // update $model
+                                            $model->total_terima_pcs = $tot_pcs;
+                                            $model->total_terima_m3 = $tot_m3;
+                                            if($model->validate()){
+                                                if($model->save()){
+                                                    $success_1 = true;
+                                                }
+                                            }
+                                            // end update $model
+                                        }
+                                    }else{
+                                        $data['message_validate']=\yii\widgets\ActiveForm::validate($model); 
+                                    }
+                                }else{
+                                    $data['status'] = false;
+                                    $data['message'] = "file not supported";
+                                }
+                            }
+                            // end insert t_attachment
+                        }
+                    }
+                    
+//                    echo "<pre>";
+//                    print_r($success_1);
+//                    echo "<pre>";
+//                    print_r($success_2);
+//                    echo "<pre>";
+//                    print_r($success_3);
+//                    echo "<pre>";
+//                    print_r($success_4);
+//                    exit;
+                    
+                    if ($success_1 && $success_2 && $success_3 && $success_4) {
+                        $transaction->commit();
+                        $data['status'] = true;
+                        $data['message'] = Yii::t('app', \app\components\Params::DEFAULT_SUCCESS_TRANSACTION_MESSAGE);
+                    } else {
+                        $transaction->rollback();
+                        $data['status'] = false;
+                        (!isset($data['message']) ? $data['message'] = Yii::t('app', \app\components\Params::DEFAULT_FAILED_TRANSACTION_MESSAGE) : '');
+                        (isset($data['message_validate']) ? $data['message'] = null : '');
+                        unlink($dir_path.'/'.$file_path);
+                    }
+                } catch (\yii\db\Exception $ex) {
+                    $transaction->rollback();
+                    $data['message'] = $ex;
+                }
+                return $this->asJson($data);
+			}
+			return $this->renderAjax('importexcel',['model'=>$model,'modAttch'=>$modAttch]);
+		}
+	}
+    
+    public function actionPrint(){
+		$this->layout = '@views/layouts/metronic/print';
+		$model = new \app\models\TTerimaSengonDetail();
+		$caraprint = Yii::$app->request->get('caraprint');
+		$model->attributes = $_GET['TTerimaSengonDetail'];
+		$model->tgl_awal = !empty($_GET['TTerimaSengonDetail']['tgl_awal'])?\app\components\DeltaFormatter::formatDateTimeForDb($_GET['TTerimaSengonDetail']['tgl_awal']):"";
+		$model->tgl_akhir = !empty($_GET['TTerimaSengonDetail']['tgl_akhir'])?\app\components\DeltaFormatter::formatDateTimeForDb($_GET['TTerimaSengonDetail']['tgl_akhir']):"";
+		$model->suplier_id = !empty($_GET['TTerimaSengon']['suplier_id'])?$_GET['TTerimaSengon']['suplier_id']:"";
+        
+        $paramprint['judul'] = Yii::t('app', 'Laporan Penerimaan Log Sengon');
+		if($model->tgl_awal == $model->tgl_akhir){
+			$paramprint['judul2'] = "Tanggal <u>".\app\components\DeltaFormatter::formatDateTimeForUser($model->tgl_awal)."</u>";
+		}else{
+			$paramprint['judul2'] = "Periode Tanggal <u>". \app\components\DeltaFormatter::formatDateTimeForUser($model->tgl_awal)."</u> sd <u>".\app\components\DeltaFormatter::formatDateTimeForUser($model->tgl_akhir)."</u>";
+		}
+		if($caraprint == 'PRINT'){
+			return $this->render('print',['model'=>$model,'paramprint'=>$paramprint]);
+		}else if($caraprint == 'PDF'){
+			$pdf = Yii::$app->pdf;
+			$pdf->options = ['title' => $paramprint['judul']];
+			$pdf->filename = $paramprint['judul'].'.pdf';
+			$pdf->methods['SetHeader'] = ['Generated By: '.Yii::$app->user->getIdentity()->userProfile->fullname.'||Generated At: ' . date('d/m/Y H:i:s')];
+			$pdf->content = $this->render('print',['model'=>$model,'paramprint'=>$paramprint]);
+			return $pdf->render();
+		}else if($caraprint == 'EXCEL'){
+			return $this->render('print',['model'=>$model,'paramprint'=>$paramprint]);
+		}
+	}
+    
+    public function actionRekap(){
+		$model = new \app\models\TTerimaSengonDetail();
+		$model->tgl_awal = date('d/m/Y', strtotime('-7 days'));
+		$model->tgl_akhir = date('d/m/Y');
+        if((\Yii::$app->request->get('laporan_params')) !== null){
+            $form_params = []; parse_str(\Yii::$app->request->get('laporan_params'),$form_params);
+            $model->attributes = $form_params['TTerimaSengonDetail'];
+            $model->tgl_awal = $form_params['TTerimaSengonDetail']['tgl_awal'];
+            $model->tgl_akhir = $form_params['TTerimaSengonDetail']['tgl_akhir'];
+            $model->suplier_id = $form_params['TTerimaSengonDetail']['suplier_id'];
+            $data['html'] = $this->renderPartial('rekapContent',['model'=>$model]);
+            return $this->asJson($data);
+        }
+		return $this->render('rekap',['model'=>$model]);
+	}
+    
+    public function actionDetailrekap($id){
+		if(\Yii::$app->request->isAjax){
+            $modTerima = \app\models\TTerimaSengon::findOne($id);
+            $paramprint['judul'] = Yii::t('app', 'DETAIL REKAP PENERIMAAN SENGON KODE : <b>'.$modTerima->kode."<b>");
+            if((\Yii::$app->request->get('laporan_params')) !== null){
+                $data = "";
+                $data['html'] = $this->renderPartial('rekapContent',['model'=>$modTerima,'detailrekap'=>true]);
+                return $this->asJson($data);
+            }
+            return $this->renderAjax('detailRekap',['modTerima'=>$modTerima,'paramprint'=>$paramprint]);
+        }
+	}
+    
+    public function actionPrintRekap(){
+		$this->layout = '@views/layouts/metronic/print';
+		$model = new \app\models\TTerimaSengonDetail();
+		$caraprint = Yii::$app->request->get('caraprint');
+		$model->attributes = $_GET['TTerimaSengonDetail'];
+		$model->tgl_awal = !empty($_GET['TTerimaSengonDetail']['tgl_awal'])?\app\components\DeltaFormatter::formatDateTimeForDb($_GET['TTerimaSengonDetail']['tgl_awal']):"";
+		$model->tgl_akhir = !empty($_GET['TTerimaSengonDetail']['tgl_akhir'])?\app\components\DeltaFormatter::formatDateTimeForDb($_GET['TTerimaSengonDetail']['tgl_akhir']):"";
+		$model->suplier_id = !empty($_GET['TTerimaSengonDetail']['suplier_id'])?$_GET['TTerimaSengon']['suplier_id']:"";
+        
+        $paramprint['judul'] = Yii::t('app', 'Laporan Penerimaan Log Sengon');
+		if($model->tgl_awal == $model->tgl_akhir){
+			$paramprint['judul2'] = "Tanggal <u>".\app\components\DeltaFormatter::formatDateTimeForUser($model->tgl_awal)."</u>";
+		}else{
+			$paramprint['judul2'] = "Periode Tanggal <u>". \app\components\DeltaFormatter::formatDateTimeForUser($model->tgl_awal)."</u> sd <u>".\app\components\DeltaFormatter::formatDateTimeForUser($model->tgl_akhir)."</u>";
+		}
+		if($caraprint == 'PRINT'){
+			return $this->render('printRekap',['model'=>$model,'paramprint'=>$paramprint]);
+		}else if($caraprint == 'PDF'){
+			$pdf = Yii::$app->pdf;
+			$pdf->options = ['title' => $paramprint['judul']];
+			$pdf->filename = $paramprint['judul'].'.pdf';
+			$pdf->methods['SetHeader'] = ['Generated By: '.Yii::$app->user->getIdentity()->userProfile->fullname.'||Generated At: ' . date('d/m/Y H:i:s')];
+			$pdf->content = $this->render('printRekap',['model'=>$model,'paramprint'=>$paramprint]);
+			return $pdf->render();
+		}else if($caraprint == 'EXCEL'){
+			return $this->render('printRekap',['model'=>$model,'paramprint'=>$paramprint]);
+		}
+	}
+    
+    public function actionDeleteByKodeInput(){
+		if(\Yii::$app->request->isAjax){
+            $model = new \app\models\TTerimaSengon();
+			if( Yii::$app->request->post('terima_sengon_id')){
+                $terima_sengon_id = Yii::$app->request->post('terima_sengon_id');
+                $transaction = \Yii::$app->db->beginTransaction();
+                try {
+                    $success_1 = false; // t_terima_sengon
+                    $success_2 = true; // t_terima_sengon_detail
+                    $success_3 = true; // t_attachment
+                    $success_4 = true; // t_afkir_sengon
+                    $success_5 = true; // h_persediaan_log
+                    
+                    $model = \app\models\TTerimaSengon::findOne($terima_sengon_id);
+
+                    $success_2 = \app\models\TTerimaSengonDetail::deleteAll("terima_sengon_id = ".$terima_sengon_id);
+                    
+                    $modAfkir = \app\models\TAfkirSengon::find()->where("terima_sengon_id = ".$terima_sengon_id)->all();
+                    if(!empty($modAfkir)){
+                        $success_4 = \app\models\TAfkirSengon::deleteAll("terima_sengon_id = '{$terima_sengon_id}'");
+                    }
+                    
+                    $modPersediaan = \app\models\HPersediaanLog::find()->where("reff_no ILIKE '%".$model->kode."%'")->all();
+                    if(!empty($modPersediaan)){
+                        $success_5 = \app\models\HPersediaanLog::deleteAll("reff_no ILIKE '%".$model->kode."%'");
+                    }
+                    
+                    if($model->delete()){
+                        $success_1 = true;
+                        $modAttch = \app\models\TAttachment::find()->where("reff_no = '{$model->kode}'")->all();
+                        if(!empty($modAttch)){
+                            $success_3 = \app\models\TAttachment::deleteAll("reff_no = '{$model->kode}'");
+                        }
+                        
+                    }else{
+                        $data['message'] = Yii::t('app', 'Data Gagal dihapus');
+                    }
+                    
+//                    echo "<pre>";
+//                    print_r($success_1);
+//                    echo "<pre>";
+//                    print_r($success_2);
+//                    echo "<pre>";
+//                    print_r($success_3);
+//                    echo "<pre>";
+//                    print_r($success_4);
+//                    echo "<pre>";
+//                    print_r($success_5);
+//                    exit;
+                    
+                    if ($success_1 && $success_2 && $success_3 && $success_4 && $success_5) {
+                        $transaction->commit();
+                        $data['status'] = true;
+                        $data['message'] = Yii::t('app', '<i class="icon-check"></i> Data Berhasil Dihapus');
+                    } else {
+                        $transaction->rollback();
+                        $data['status'] = false;
+                        (!isset($data['message']) ? $data['message'] = Yii::t('app', \app\components\Params::DEFAULT_FAILED_TRANSACTION_MESSAGE) : '');
+                        unlink($dir_path.'/'.$file_path);
+                    }
+                } catch (\yii\db\Exception $ex) {
+                    $transaction->rollback();
+                    $data['message'] = $ex;
+                }
+                return $this->asJson($data);
+			}
+			return $this->renderAjax('deletebykode',['model'=>$model]);
+		}
+	}
+    
+    
+    public function actionAfkir(){
+        $model = new \app\models\TAfkirSengon();
+		$model->tgl_awal = date('d/m/Y', strtotime('first day of this month'));
+		$model->tgl_akhir = date('d/m/Y');
+        if(\Yii::$app->request->get('dt')=='table-laporan'){
+			if((\Yii::$app->request->get('laporan_params')) !== null){
+				$form_params = []; parse_str(\Yii::$app->request->get('laporan_params'),$form_params); 
+				$model->attributes = $form_params['TAfkirSengon'];
+				$model->tgl_awal = $form_params['TAfkirSengon']['tgl_awal'];
+				$model->tgl_akhir = $form_params['TAfkirSengon']['tgl_akhir'];
+				$model->suplier_id = $form_params['TAfkirSengon']['suplier_id'];
+			}
+			return \yii\helpers\Json::encode(\app\components\SSP::complex( $model->searchLaporanDt() ));
+		}
+		return $this->render('afkir',['model'=>$model]);
+	}
+	
+    public function actionCreateAfkir(){
+            if(\Yii::$app->request->isAjax){
+			$model = new \app\models\TAfkirSengon();
+			$model->kode = "Auto Generate";
+			$model->qty_pcs_nota = 0;
+			$model->qty_m3_nota = 0;
+			$model->qty_pcs_terima = 0;
+			$model->qty_m3_terima = 0;
+			$model->qty_pcs = 0;
+			$model->qty_m3 = 0;
+			$model->selisih_pcs = 0;
+			$model->selisih_m3 = 0;
+			$model->sudah_dikirim = true;
+            $model->grader = 0;
+
+            if( Yii::$app->request->post('TAfkirSengon')){
+                $transaction = \Yii::$app->db->beginTransaction();
+                try {
+                    $success_1 = false; // t_afkir_sengon
+                    $success_2 = true; // t_afkir_sengon_detail
+                    $success_3 = true; // h_persediaan_log
+                    
+                    $model->load(\Yii::$app->request->post());
+                    
+                    $KodeTerima= \app\models\TTerimaSengon::findOne(['terima_sengon_id'=>$_POST['TAfkirSengon']['terima_sengon_id']])->kode;
+                    if(substr($KodeTerima,0,3) == 'TSG' ){
+                        $model->kode = \app\components\DeltaGenerator::kodeAfkirSengon();
+                    }else if(substr($KodeTerima,0,3) == 'TJB' ){
+                        $model->kode = \app\components\DeltaGenerator::kodeAfkirJabon();
+                    }
+                    
+//                    echo "<pre>";
+//                    print_r($KodeTerima);
+//                    exit;
+                    
+                    //$model->tanggal = date("Y-m-d");
+                    $model->tanggal = isset($_POST['TAfkirSengon']['tanggal'])?$_POST['TAfkirSengon']['tanggal']: date('Y-m-d');
+                    $model->diameter = 0;
+                    $model->panjang = 0;
+                    $model->qty_pcs = isset($_POST['TAfkirSengon']['qty_pcs_total'])?$_POST['TAfkirSengon']['qty_pcs_total']:0;
+                    $model->qty_m3 = isset($_POST['TAfkirSengon']['qty_m3_total'])?$_POST['TAfkirSengon']['qty_m3_total']:0;
+                    $model->grader = isset($_POST['TAfkirSengon']['grader']) ? $_POST['TAfkirSengon']['grader'] : 0;
+                    $model->tanggal = isset($_POST['TAfkirSengon']['tanggal']) ? $_POST['TAfkirSengon']['tanggal'] : '0000-00-00';
+                    if($model->validate()){
+                        $success_1 = $model->save();
+                        if($success_1){
+                            foreach ( $_POST['TAfkirSengon'] as $i => $afkirdetail ){
+                                if(is_array($afkirdetail)){
+                                    $modDetail = new \app\models\TAfkirSengonDetail();
+                                    $modDetail->attributes = $afkirdetail;
+                                    $modDetail->afkir_sengon_id = $model->afkir_sengon_id;
+                                    $modDetail->terima_sengon_id = $model->terima_sengon_id;
+                                    if($modDetail->validate()){
+                                        if($modDetail->save()){
+                                            $success_2 &= true;
+                                        }else{
+                                            $success_2 = false;
+                                        }
+                                    }else{
+                                        $success_2 = false;
+                                        $data['message_validate']=\yii\widgets\ActiveForm::validate($modDetail); 
+                                    }
+                                    
+                                    $bayar_langsung = "";
+                                    $modTerima = \app\models\TTerimaSengon::findOne($model->terima_sengon_id);
+                                    $modTagihan = \app\models\TTagihanSengon::findOne(['posengon_id'=>$modTerima->posengon_id,'suplier_id'=>$modTerima->suplier_id]);
+                                    $bayar_langsung = false;
+                                    if(!empty($modTagihan)){
+                                        $bayar_langsung = $modTagihan->bayar_langsung;
+                                    }
+
+                                    $grader = $model->grader;
+
+                                    //$grader == "checked" ? $grader = 1 : $grader = 0;
+                                    // echo "<pre> 1";
+                                    // print_r($success_1);
+                                    // echo "<pre> 2";
+                                    // print_r($success_2);
+                                    // echo "<pre> 3";
+                                    // print_r($success_3);
+                                    // exit;
+ 
+                                    //if($bayar_langsung == true && $grader == 1){
+                                    if($grader == 1){
+                                        // START INSERT h_persediaan_log
+                                        $reff_no = $model->kode."-".$modDetail->afkir_sengon_detail_id;
+                                        $modPersediaan = \app\models\HPersediaanLog::findOne(['reff_no'=>$reff_no]);
+                                        if(empty($modPersediaan)){
+                                            $modPersediaan = new \app\models\HPersediaanLog();
+                                        }
+                                        $modPersediaan->kayu_id = \app\components\Params::DEFAULT_KAYU_ID_SENGON;
+                                        $modPersediaan->tgl_transaksi = $model->tanggal;
+                                        $modPersediaan->no_grade = "-";
+                                        $modPersediaan->no_barcode = "-";
+                                        $modPersediaan->no_btg = "-";
+                                        $modPersediaan->no_lap = "-";
+                                        $modPersediaan->status = "IN";
+                                        $modPersediaan->reff_no = $reff_no;
+                                        $modPersediaan->lokasi = "GUDANG LOG AFKIR";
+                                        $modPersediaan->fisik_pcs = $modDetail->qty_pcs;
+                                        $modPersediaan->fisik_diameter = $modDetail->diameter;
+                                        $modPersediaan->fisik_panjang = $modDetail->panjang;
+                                        $modPersediaan->fisik_reduksi = "-";
+                                        $modPersediaan->fisik_volume = $modDetail->qty_m3;
+                                        if($modPersediaan->validate()){
+                                            if($modPersediaan->save()){
+                                                $success_3 = true;
+                                            }else{
+                                                $success_3 = false;
+                                            }
+                                        }else{
+                                            $success_3 = false;
+                                        }
+                                        // END INSERT h_persediaan_log
+                                    }
+                                }
+                            }
+                        }
+                    }else{
+                        $data['message_validate']=\yii\widgets\ActiveForm::validate($model); 
+                    }
+                    
+//                    echo "<pre> 1";
+//                    print_r($success_1);
+//                    echo "<pre> 2";
+//                    print_r($success_2);
+//                    echo "<pre> 3";
+//                    print_r($success_3);
+//                    exit;
+                    
+                    if ($success_1 && $success_2 && $success_3) {
+                        $transaction->commit();
+                        $data['status'] = true;
+                        $data['message'] = Yii::t('app', \app\components\Params::DEFAULT_SUCCESS_TRANSACTION_MESSAGE);
+                        $data['callback'] = "$('#modal-create-afkir').find('button.fa-close').trigger('click');";
+                    } else {
+                        $transaction->rollback();
+                        $data['status'] = false;
+                        (!isset($data['message']) ? $data['message'] = Yii::t('app', \app\components\Params::DEFAULT_FAILED_TRANSACTION_MESSAGE) : '');
+                        (isset($data['message_validate']) ? $data['message'] = null : '');
+                    }
+                } catch (\yii\db\Exception $ex) {
+                    $transaction->rollback();
+                    $data['message'] = $ex;
+                }
+                return $this->asJson($data);
+			}
+			return $this->renderAjax('createAfkir',['model'=>$model]);
+		}
+	}
+    
+    public function actionOpenpenerimaan(){
+		if(\Yii::$app->request->isAjax){
+            $pickingfrom = Yii::$app->request->get('pickingfrom');
+			if(\Yii::$app->request->get('dt')=='modal-open-penerimaan'){
+                if(!empty($pickingfrom)){
+                    $valcolumn = "( SELECT kode FROM t_tagihan_sengon WHERE t_tagihan_sengon.terima_sengon_id = t_terima_sengon.terima_sengon_id  LIMIT 1) AS kode_tagihan";
+                }else{
+                    $valcolumn = "( SELECT kode FROM t_afkir_sengon WHERE t_afkir_sengon.terima_sengon_id = t_terima_sengon.terima_sengon_id  LIMIT 1) AS kode_afkir";
+                }
+
+                $grader = "(CASE 
+                                WHEN (SELECT bayar_langsung FROM t_tagihan_sengon WHERE t_tagihan_sengon.terima_sengon_id = t_terima_sengon.terima_sengon_id  LIMIT 1) is null THEN 0
+                                ELSE 1
+                                END) AS bayar_langsung";
+
+				$param['table']= \app\models\TTerimaSengon::tableName();
+				$param['pk']= $param['table'].".".\app\models\TTerimaSengon::primaryKey()[0];
+				$param['column'] = [$param['table'].'.terima_sengon_id',
+									$param['table'].'.kode',
+									$param['table'].'.tanggal',
+									'm_suplier.suplier_nm',
+									$param['table'].'.lokasi_muat',
+									$param['table'].'.asal_kayu',
+									$param['table'].'.nopol',
+									$param['table'].'.total_notaangkut_pcs',
+									$param['table'].'.total_notaangkut_m3',
+									$param['table'].'.total_terima_pcs',
+									$param['table'].'.total_terima_m3',
+									'm_pegawai.pegawai_nama',
+                                                                        $grader,
+                                                                        $valcolumn,
+                                                                        'm_suplier.type',
+									];
+				$param['join']= ['JOIN m_suplier ON m_suplier.suplier_id = '.$param['table'].'.suplier_id
+								  JOIN m_pegawai ON m_pegawai.pegawai_id = '.$param['table'].'.diperiksa_tally
+                                '];
+				return \yii\helpers\Json::encode(\app\components\SSP::complex( $param ));
+			}
+			return $this->renderAjax('openPenerimaan',['pickingfrom'=>$pickingfrom]);
+        }
+    }
+    
+    public function actionHapusafkir(){
+		if(\Yii::$app->request->isAjax){
+            $tableid = Yii::$app->request->get('tableid');
+            $id = Yii::$app->request->get('id');
+			$model = \app\models\TAfkirSengon::findOne($id);
+			$modDetail = \app\models\TAfkirSengonDetail::find()->where("afkir_sengon_id = ".$model->afkir_sengon_id)->all();
+			$modPersediaan = \app\models\HPersediaanLog::find()->where("reff_no ILIKE '%".$model->kode."%' ")->all();
+            
+            if( Yii::$app->request->post('deleteRecord')){
+                $transaction = \Yii::$app->db->beginTransaction();
+                try {
+                    $success_1 = false;
+                        if(count($modPersediaan)>0){
+                            \app\models\HPersediaanLog::deleteAll("reff_no ILIKE '%".$model->kode."%' ");
+                        }
+                        if(count($modDetail)>0){
+                            \app\models\TAfkirSengonDetail::deleteAll("afkir_sengon_id = ".$model->afkir_sengon_id);
+                        }
+                        if($model->delete()){
+                            $success_1 = true;
+                        }else{
+                            $data['message'] = Yii::t('app', 'Data Gagal dihapus');
+                        }
+                        if ($success_1) {
+                            $transaction->commit();
+                            $data['status'] = true;
+                            $data['message'] = Yii::t('app', '<i class="icon-check"></i> Data Berhasil Dihapus');
+                            $data['callback'] = "$('#table-laporan').dataTable().fnClearTable();";
+                        } else {
+                            $transaction->rollback();
+                            $data['status'] = false;
+                            (!isset($data['message']) ? $data['message'] = Yii::t('app', \app\components\Params::DEFAULT_FAILED_TRANSACTION_MESSAGE) : '');
+                            (isset($data['message_validate']) ? $data['message'] = null : '');
+                        }
+//                    }
+                } catch (\yii\db\Exception $ex) {
+                    $transaction->rollback();
+                    $data['message'] = $ex;
+                }
+                return $this->asJson($data);
+			}
+			return $this->renderAjax('@views/apps/partial/_deleteRecordConfirm',['id'=>$id,'tableid'=>$tableid,'actionname'=>'hapusafkir']);
+		}
+    }
+    
+    public function actionPrintAfkir(){
+		$this->layout = '@views/layouts/metronic/print';
+		$model = new \app\models\TAfkirSengon();
+		$caraprint = Yii::$app->request->get('caraprint');
+		$model->attributes = $_GET['TAfkirSengon'];
+		$model->tgl_awal = !empty($_GET['TAfkirSengon']['tgl_awal'])?\app\components\DeltaFormatter::formatDateTimeForDb($_GET['TAfkirSengon']['tgl_awal']):"";
+		$model->tgl_akhir = !empty($_GET['TAfkirSengon']['tgl_akhir'])?\app\components\DeltaFormatter::formatDateTimeForDb($_GET['TAfkirSengon']['tgl_akhir']):"";
+		$model->suplier_id = !empty($_GET['TAfkirSengon']['suplier_id'])?$_GET['TTerimaSengon']['suplier_id']:"";
+        
+        $paramprint['judul'] = Yii::t('app', 'Laporan Penerimaan Log Sengon');
+		if($model->tgl_awal == $model->tgl_akhir){
+			$paramprint['judul2'] = "Tanggal <u>".\app\components\DeltaFormatter::formatDateTimeForUser($model->tgl_awal)."</u>";
+		}else{
+			$paramprint['judul2'] = "Periode Tanggal <u>". \app\components\DeltaFormatter::formatDateTimeForUser($model->tgl_awal)."</u> sd <u>".\app\components\DeltaFormatter::formatDateTimeForUser($model->tgl_akhir)."</u>";
+		}
+		if($caraprint == 'PRINT'){
+			return $this->render('printAfkir',['model'=>$model,'paramprint'=>$paramprint]);
+		}else if($caraprint == 'PDF'){
+			$pdf = Yii::$app->pdf;
+			$pdf->options = ['title' => $paramprint['judul']];
+			$pdf->filename = $paramprint['judul'].'.pdf';
+			$pdf->methods['SetHeader'] = ['Generated By: '.Yii::$app->user->getIdentity()->userProfile->fullname.'||Generated At: ' . date('d/m/Y H:i:s')];
+			$pdf->content = $this->render('printAfkir',['model'=>$model,'paramprint'=>$paramprint]);
+			return $pdf->render();
+		}else if($caraprint == 'EXCEL'){
+			return $this->render('printAfkir',['model'=>$model,'paramprint'=>$paramprint]);
+		}
+	}
+    
+    public function actionAddItemAfkir(){
+        if(\Yii::$app->request->isAjax){
+            $modDetail = new \app\models\TAfkirSengon();
+			
+            $data['item'] = $this->renderPartial('_addItemAfkir',['modDetail'=>$modDetail,'disabled'=>false]);
+            return $this->asJson($data);
+        }
+    }
+    
+    public function actionInfo($id){
+        if(\Yii::$app->request->isAjax){
+            $model = \app\models\TAfkirSengon::findOne($id);
+            $modDetail = \app\models\TAfkirSengonDetail::find()->where(['afkir_sengon_id'=>$id])->all();
+            return $this->renderAjax('info',['model'=>$model,'modDetail'=>$modDetail]);
+        }
+    }
+}

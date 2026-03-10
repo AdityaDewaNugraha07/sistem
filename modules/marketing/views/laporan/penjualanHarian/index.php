@@ -1,0 +1,179 @@
+<?php
+/* @var $this yii\web\View */
+$this->title = 'Laporan Penjualan Lokal';
+app\assets\DatatableAsset::register($this);
+app\assets\DatepickerAsset::register($this);
+app\assets\InputMaskAsset::register($this);
+?>
+<!-- BEGIN PAGE TITLE-->
+<h1 class="page-title"> <?php echo $this->title; ?></h1>
+<!-- END PAGE TITLE-->
+<!-- END PAGE HEADER-->
+<div class="row">
+	<div class="col-md-12">
+		<!-- BEGIN EXAMPLE TABLE PORTLET-->
+		<div class="portlet light bordered">
+			<?= $this->render('_search', ['model' => $model]) ?>
+			<div class="portlet-title">
+				<div class="caption">
+					<i class="fa fa-cogs"></i>
+					<span class="caption-subject hijau bold"><?= Yii::t('app', 'Laporan Penjualan Harian Produk Lokal'); ?> <span id="periode-label" class="font-blue-soft"></span></span>
+				</div>
+				<div class="tools">
+					<a href="javascript:;" class="reload"> </a>
+					<a href="javascript:;" class="fullscreen"> </a>
+				</div>
+			</div>
+			<div class="portlet-body">
+				<table class="table table-striped table-bordered table-hover" id="table-laporan">
+					<thead>
+						<tr>
+							<th></th>
+							<th style="width:150px;"><?= Yii::t('app', 'Kode Nota') ?></th>
+							<th style="width:150px;"><?= Yii::t('app', 'Tanggal Nota') ?></th>
+							<th style="width:300px;"><?= Yii::t('app', 'Customer'); ?></th>
+							<th style="width:80px;"><?= Yii::t('app', 'Jml Palet'); ?></th>
+							<th style="width:80px;"><?= Yii::t('app', 'Jml Pcs'); ?></th>
+							<th style="width:80px;"><?= Yii::t('app', 'M<sup>3</sup>'); ?></th>
+							<th><?= Yii::t('app', 'Total'); ?></th>
+						</tr>
+					</thead>
+				</table>
+				<div class="place-total">
+					<table class="table table-striped table-bordered table-hover" style="width: 100%;">
+						<tr style="background-color: #D7E1EC">
+							<td style="width: 625px; text-align: right"><b>Total &nbsp; </b></td>
+							<td style="width:90px; font-weight: 600;" id='place-totalpalet' class='text-align-center'></td>
+							<td style="width:90px; font-weight: 600;" id='place-totalpcs' class='text-align-center'></td>
+							<td style="width:90px; font-weight: 600;" id='place-totalm3' class='text-align-right'></td>
+							<td style="font-weight: 600;" id='place-totalharga' class='text-align-right'>asd</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+		</div>
+		<!-- END EXAMPLE TABLE PORTLET-->
+	</div>
+</div>
+<?php $this->registerJs("
+	$('#form-search-laporan').submit(function(){
+		dtLaporan();
+		return false;
+	});
+	formconfig(); 
+	dtLaporan();
+	changePertanggalLabel();
+", yii\web\View::POS_READY); ?>
+<script>
+function dtLaporan(){
+    var dt_table =  $('#table-laporan').dataTable({
+		pageLength: 100,
+        ajax: { 
+			url: '<?= \yii\helpers\Url::toRoute('/marketing/laporan/penjualanHarian') ?>',
+			data:{
+				dt: 'table-laporan',
+				laporan_params : $("#form-search-laporan").serialize(),
+			} 
+		},
+        columnDefs: [
+			{	targets: 0, visible: false },
+			{	
+				targets: 1, 
+				class: 'text-align-center' ,
+				render: function ( data, type, full, meta ) {
+					return data;
+                }
+			},
+			{ 	targets: 2, 
+                render: function ( data, type, full, meta ) {
+					var date = new Date(data);
+					date = date.toString('dd/MM/yyyy');
+					return '<center>'+date+'</center>';
+                }
+            },
+			{ 	targets: 3 ,
+				class:"text-align-left",
+            },
+			{ 	targets: 4 ,
+				class:"text-align-center",
+				render: function ( data, type, full, meta ) {
+					if(full[8] == "Log"){
+						var palet = '<center> 0 </center>'; //full[5]
+					} else{
+						var palet = data;
+					}
+					return palet;
+					// return data;
+				}
+            },
+			{ 	targets: 5 ,
+				class:"text-align-right",
+                render: function ( data, type, full, meta ) {
+					return data;
+                }
+            },
+			{ 	targets: 6 ,
+				class:"text-align-right",
+                render: function ( data, type, full, meta ) {
+					return formatNumberFixed4(data);
+                }
+            },
+			{ 	targets: 7 ,
+				class:"text-align-right",
+                render: function ( data, type, full, meta ) {
+					return formatNumberForUser(data);
+                }
+            },
+        ],
+		"fnDrawCallback": function( oSettings ) {
+			formattingDatatableReport(oSettings.sTableId);
+			changePertanggalLabel();
+			if(oSettings.aLastSort[0]){
+				$('form').find('input[name*="[col]"]').val(oSettings.aLastSort[0].col);
+				$('form').find('input[name*="[dir]"]').val(oSettings.aLastSort[0].dir);
+			}
+			var api = this.api(), data;
+			// Remove the formatting to get integer data for summation
+            var intVal = function ( i ) {
+                return typeof i === 'string' ?
+                    i.replace(/[\$,]/g, '')*1 :
+                    typeof i === 'number' ?
+                        i : 0;
+            };
+            // Total over all pages
+            // var total_palet = api.column( 4 ).data().reduce( function (a, b) { return intVal(a) + intVal(b); }, 0 );
+			var total_palet = api.rows().data().reduce(function (a, row) {
+				if (row[8] === "Log") {
+					return intVal(a) + 0;  // Jika kolom ke-8 adalah "Log", tambahkan 0 ke total
+				} else {
+					return intVal(a) + intVal(row[4]);  // Jika bukan "Log", tambahkan nilai di kolom ke-4
+				}
+			}, 0);
+            var total_pcs = api.column( 5 ).data().reduce( function (a, b) { return intVal(a) + intVal(b); }, 0 );
+            var total_m3 = api.column( 6 ).data().reduce( function (a, b) { return intVal(a) + intVal(b); }, 0 );
+            var total_harga = api.column( 7 ).data().reduce( function (a, b) { return intVal(a) + intVal(b); }, 0 );
+			$("#place-totalpalet").html( formatNumberForUser(total_palet) );
+			$("#place-totalpcs").html( formatNumberForUser(total_pcs) );
+			$("#place-totalm3").html( formatNumberFixed4(total_m3) );
+			$("#place-totalharga").html( formatNumberForUser(total_harga) );
+			
+		},
+		order:[],
+		"dom": "<'row'<'col-md-6 col-sm-12'l><'col-md-6 col-sm-12 dataTables_moreaction'>r><'table-scrollable't><'row'<'col-md-5 col-sm-12'i><'col-md-7 col-sm-12'p>>", // default data master cis
+		"bDestroy": true,
+		"autoWidth" : false,
+    });
+}
+
+function printout(caraPrint){
+	window.open("<?= yii\helpers\Url::toRoute('/marketing/laporan/PenjualanHarianPrint') ?>?"+$('#form-search-laporan').serialize()+"&caraprint="+caraPrint,"",'location=_new, width=1200px, scrollbars=yes');
+}
+
+function changePertanggalLabel(){
+	if($('#<?= yii\bootstrap\Html::getInputId($model, 'tgl_awal');?>').val()){
+		$('#periode-label').html("Periode "+$('#<?= yii\bootstrap\Html::getInputId($model, 'tgl_awal');?>').val()+" sd "+$('#<?= yii\bootstrap\Html::getInputId($model, 'tgl_akhir');?>').val());
+	}else{
+		$('#periode-label').html("");
+	}
+}
+</script>

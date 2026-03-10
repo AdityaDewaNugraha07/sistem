@@ -1,0 +1,28 @@
+<?php
+if(!isset($sizelabel)){
+	$sizelabel = "3";
+}
+if(!isset($sizeelement)){
+	$sizeelement = "6";
+}
+$today = date('d/m/Y');
+?>
+<div class="form-group">
+	<label class="col-md-<?= $sizelabel ?> control-label"><?= $label ?></label>
+	<div class="col-md-<?= $sizeelement ?>">
+		<span class="input-group-btn" style="width: 50%">
+			<?= $form->field($model, 'tgl_awal',[
+						'template'=>'<div class="col-md-6"><div class="input-group input-small date date-picker bs-datetime">{input} <span class="input-group-addon">
+									 <button class="btn default" type="button" style="margin-left: 0px;"><i class="fa fa-calendar"></i></button></span></div> 
+									 {error}</div>'])->textInput(['readonly'=>'readonly','value'=>isset($model->tgl_awal) ? $model->tgl_awal : $today]); ?>
+		</span>
+		<span class="input-group-addon textarea-addon" style="width: 10%; background-color: #fff; border: 0;"> <?= Yii::t('app', 's/d') ?> </span>
+		<span class="input-group-btn" style="width: 50%">
+			<?= $form->field($model, 'tgl_akhir',[
+						'template'=>'<div class="col-md-6"><div class="input-group input-small date date-picker bs-datetime">{input} <span class="input-group-addon">
+									 <button class="btn default" type="button" style="margin-left: 0px;"><i class="fa fa-calendar"></i></button></span></div> 
+									 {error}</div>'])->textInput(['readonly'=>'readonly','value'=>$today]); ?>
+		</span>
+	<span class="help-block"></span>
+	</div>
+</div>

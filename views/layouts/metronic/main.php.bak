@@ -1,0 +1,385 @@
+<?php
+
+/* @var $this \yii\web\View */
+/* @var $content string */
+
+use yii\helpers\Html;
+use app\assets\MetronicAsset;
+use yii\helpers\Url;
+
+MetronicAsset::register($this);
+
+$this->registerCssFile($this->theme->baseUrl."/layouts/layout/css/layout.min.css",['depends'=>[yii\web\YiiAsset::className()]]);
+$this->registerCssFile($this->theme->baseUrl."/layouts/layout/css/themes/ciptana.min.css",['depends'=>[yii\web\YiiAsset::className()]]);
+?>
+
+<?php $this->beginPage() ?>
+<!DOCTYPE html>
+<HTML lang="<?php echo Yii::$app->language ?>">
+<HEAD>
+    <meta charset="<?= Yii::$app->charset ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?= Html::csrfMetaTags() ?>
+    <title><?= !empty(Html::encode($this->title))? Html::encode($this->title)." - ":""; ?> <?= Yii::$app->name; ?></title>
+    <?php $this->head() ?>
+    <link rel="shortcut icon" href="<?= Url::base();?>/favicon.ico" />
+</HEAD>
+<!-- BEGIN BODY -->
+<?php
+if(isset($_COOKIE['sidebar_closed'])){
+    $sidebar_closed = ($_COOKIE['sidebar_closed'] == '1')?true:false;
+}else{
+    $sidebar_closed = false;
+}
+?>
+<script>
+    document.write("<BO"+"DY class='page-header-fixed page-sidebar-closed-hide-logo page-container-bg-solid <?= ($sidebar_closed)?'page-sidebar-closed':'' ?>'>");
+</script>
+<!--<BODY class="page-header-fixed page-sidebar-closed-hide-logo page-container-bg-solid <?php // echo ($sidebar_closed)?'page-sidebar-closed':'' ?>">--> 
+<?php $this->beginBody() ?>
+
+    <div class="page-wrapper">
+        <!-- BEGIN HEADER -->
+        <div class="page-header navbar navbar-fixed-top">
+            <!-- BEGIN HEADER INNER -->
+            <div class="page-header-inner ">
+                <!-- BEGIN LOGO -->
+                <div class="page-logo">
+                    <a href="<?= Url::base(); ?>">
+                        <img src="<?php echo \Yii::$app->view->theme->baseUrl; ?>/cis/img/logo.png" alt="" class="logo-default" /> 
+                        <img src="<?php echo \Yii::$app->view->theme->baseUrl; ?>/cis/img/logo-alt.png" alt="" class="logo-default2" /> 
+                    </a>
+                    <div class="menu-toggler sidebar-toggler">
+                        <span></span>
+                    </div>
+                </div>
+                <!-- END LOGO -->
+                <!-- BEGIN RESPONSIVE MENU TOGGLER -->
+                <a href="javascript:;" class="menu-toggler responsive-toggler" data-toggle="collapse" data-target=".navbar-collapse">
+                    <span></span>
+                </a>
+                <!-- END RESPONSIVE MENU TOGGLER -->
+                <!-- BEGIN TOP NAVIGATION MENU -->
+                <div class="top-menu">
+                    <ul class="nav navbar-nav pull-right">
+                        <!-- BEGIN USER LOGIN DROPDOWN -->
+                        <!-- DOC: Apply "dropdown-dark" class after below "dropdown-extended" to change the dropdown styte -->
+						<?php if(\app\models\CSiteConfig::findOne(1)->notifikasi==TRUE){ ?>
+						<li class="dropdown dropdown-extended dropdown-notification" id="header_notification_bar" onclick="opennotif();">
+							<a href="javascript:;" class="dropdown-toggle">
+								<i class="icon-bell"></i>
+								<span class="badge badge-default" id="place-notifnumber">0</span>
+							</a>
+							<ul class="dropdown-menu"></ul>
+						</li>
+						<?php } ?>
+                        <li class="dropdown dropdown-user">
+                            <a href="javascript:;" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" data-close-others="true">
+                                <img alt="" class="img-circle" style="background-color: rgba(255,255,255,0.4); margin-right: 10px;" src="<?= \Yii::$app->view->theme->baseUrl; ?>/cis/img/user-profile-avatar/<?= \Yii::$app->user->identity->userProfile->avatar; ?>" />
+                                <span class="username username-hide-on-mobile"> 
+                                    <?= Yii::$app->user->identity->userProfile->fullname; ?></b>
+                                </span>
+                                <i class="fa fa-angle-down"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-default">
+                                <li>
+                                    <?= yii\bootstrap\Html::a('<i class="icon-emoticon-smile"></i> '.Yii::t('app', 'My Profile'),'javascript:;',[
+                                        'onclick'=>"openModal('".\yii\helpers\Url::toRoute('/sysadmin/user/accountInfo')."','modal-account-info')",
+                                        'data-target'=>'#modal-account-info','data-toggle'=>'modal']) ?>
+                                </li>
+                                <li>
+                                    <?= yii\bootstrap\Html::a('<i class="icon-key"></i> '.Yii::t('app', 'Change Password'),'javascript:;',[
+                                        'onclick'=>"openModal('".\yii\helpers\Url::toRoute('/sysadmin/user/changePassword')."','modal-user-changepassword')",
+                                        'data-target'=>'#modal-user-changepassword','data-toggle'=>'modal']) ?>
+                                </li>
+                                <?php
+								if(Yii::$app->user->identity->user_group_id == app\components\Params::USER_GROUP_ID_SUPER_USER){
+								?>
+                                <li>
+                                    <?= yii\bootstrap\Html::a('<i class="fa fa-phone"></i> '.Yii::t('app', 'Extension List'),'javascript:;',[
+                                        'onclick'=>"openModal('".\yii\helpers\Url::toRoute('/sysadmin/extensiontelepon/list')."','modal-extension')",
+                                        'data-target'=>'#modal-extension','data-toggle'=>'modal']) ?>
+                                </li>
+								<?php } ?>
+                                <li class="dropdown-submenu" aria-haspopup="true">
+                                    <?= yii\bootstrap\Html::a('<i class="icon-briefcase"></i> '.Yii::t('app', 'System Utility'),'javascript:;',[
+                                        'onclick'=>"return false;"]) ?>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <?= yii\bootstrap\Html::a(Yii::t('app', 'Data Correction'),\yii\helpers\Url::toRoute('/sysadmin/datacorrection/index')) ?>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <?= yii\bootstrap\Html::a('<i class="icon-bar-chart"></i> '.Yii::t('app', 'My Activity'),'javascript:;',[
+                                        'onclick'=>"javascript.void(0)"]) ?>
+                                </li>
+                                <li class="divider"> </li>
+                                <li>
+                                    <?= yii\bootstrap\Html::a('<i class="fa fa-sign-out"></i> '.Yii::t('app', 'Log Out'),Url::toRoute('/apps/logout')) ?>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- END USER LOGIN DROPDOWN -->
+                    </ul>
+                </div>
+                <!-- END TOP NAVIGATION MENU -->
+            </div> 
+            <!-- END HEADER INNER -->
+        </div>
+        <!-- END HEADER -->
+        <!-- BEGIN HEADER & CONTENT DIVIDER -->
+        <div class="clearfix"> </div>
+        <!-- END HEADER & CONTENT DIVIDER -->
+        <!-- BEGIN CONTAINER -->
+        <div class="page-container">
+            <!-- BEGIN SIDEBAR -->
+            <div class="page-sidebar-wrapper">
+                <!-- BEGIN SIDEBAR -->
+                <div class="page-sidebar navbar-collapse collapse">
+                    <!-- BEGIN SIDEBAR MENU -->
+                    <ul class="page-sidebar-menu  page-header-fixed <?= ($sidebar_closed)?'page-sidebar-menu-closed':'' ?>" data-keep-expanded="false" data-auto-scroll="true" data-slide-speed="200" style="padding-top: 20px">
+                        <!-- BEGIN SIDEBAR TOGGLER BUTTON -->
+                        <li class="sidebar-toggler-wrapper hide">
+                            <div class="sidebar-toggler">
+                                <span></span>
+                            </div>
+                        </li>
+                        <li class="sidebar-search-wrapper">
+                        </li>
+                        <li class="nav-item start <?= (Yii::$app->controller->id.'/'.Yii::$app->controller->action->id == 'apps/index')?"active":""; ?>">
+                            <a href="<?= Url::base(); ?>" class="nav-link nav-toggle" style="font-weight: 600 !important;">
+                                <i class="icon-home" style="font-weight: 700 !important;"></i>
+                                <span class="title">Home</span>
+                            </a>
+                        </li>
+                        <?php
+                        if(Yii::$app->user->identity->user_group_id == \app\components\Params::USER_GROUP_ID_SUPER_USER){
+                            $menugroups = app\models\MMenuGroup::find()->where(['active'=>TRUE])->orderBy(['sequence'=>SORT_ASC])->all();
+                        }else{
+                            $select = 'm_menu_group.menu_group_id, m_menu_group.name, m_menu_group.sequence, m_menu_group.icon';
+                            $query = "
+                                SELECT $select
+                                FROM m_user_access
+                                JOIN m_menu ON m_menu.menu_id=m_user_access.menu_id
+                                JOIN m_menu_group ON m_menu_group.menu_group_id=m_menu.menu_group_id
+                                WHERE m_user_access.user_group_id = ".Yii::$app->user->identity->user_group_id." 
+                                    AND m_menu_group.active = TRUE
+                                GROUP BY $select
+                                ORDER BY m_menu_group.sequence ASC
+                            ";
+                            $menugroups = Yii::$app->db->createCommand($query)->queryAll();
+                        }
+                        foreach($menugroups as $i => $menugroup){
+                            if(Yii::$app->user->identity->user_group_id == \app\components\Params::USER_GROUP_ID_SUPER_USER){
+                                $query = "
+                                    SELECT m_module.module_id, m_module.name, m_module.icon 
+                                    FROM m_menu
+                                    JOIN m_module ON m_module.module_id = m_menu.module_id
+                                    WHERE m_menu.menu_group_id = ".$menugroup['menu_group_id']." 
+                                        AND m_module.active = TRUE 
+                                    GROUP BY m_module.module_id, m_module.name, m_module.icon 
+                                    ORDER BY m_module.sequence ASC
+                                ";
+                            }else{
+                                $query = "
+                                    SELECT m_module.module_id, m_module.name, m_module.icon 
+                                    FROM m_user_access
+                                    JOIN m_menu ON m_menu.menu_id=m_user_access.menu_id
+                                    JOIN m_module ON m_module.module_id = m_menu.module_id
+                                    WHERE m_menu.menu_group_id = ".$menugroup['menu_group_id']." 
+                                        AND m_module.active = TRUE 
+                                        AND m_user_access.user_group_id = ".Yii::$app->user->identity->user_group_id."  
+                                    GROUP BY m_module.module_id, m_module.name, m_module.icon 
+                                    ORDER BY m_module.sequence ASC
+                                ";
+                            }
+                            $modules = Yii::$app->db->createCommand($query)->queryAll();
+                            
+                            if(count($modules)>0){
+                                $query = "SELECT * FROM m_menu 
+                                        JOIN m_menu_group ON m_menu_group.menu_group_id=m_menu.menu_group_id
+                                        WHERE url ILIKE '%".Yii::$app->controller->getRoute()."%'";
+                                $activegroupmenu = Yii::$app->db->createCommand($query)->queryOne();
+                            ?>
+                                <li class="nav-item start cat-m-<?= $menugroup['menu_group_id']; ?>">
+                                    <a href="javascript:;" class="nav-link nav-toggle" style="font-weight: 600 !important;">
+                                        <i class="<?php echo $menugroup['icon']; ?>" style="font-weight: 600 !important;"></i>
+                                        <span class="title"><?= $menugroup['name']; ?></span>
+                                        <span class="arrow <?= ($activegroupmenu['menu_group_id']==$menugroup['menu_group_id'])?"open":""; ?>"></span>
+                                    </a>
+                                    
+                                    <?php if($menugroup['menu_group_id'] != \app\components\Params::MENU_GROUP_ID_KONFIGURASI){ ?>
+                                    
+                                        <?php if(count($modules)>1){  //Jika Module lebih dari satu ?>
+                                            <ul class="sub-menu" style="display:<?= ($activegroupmenu['menu_group_id']==$menugroup['menu_group_id'])?"block":""; ?>;">
+                                                <?php foreach($modules as $i => $module){ ?>
+                                                <li class="nav-item mod-<?= $module['module_id']; ?>">
+                                                    <a href="javascript:;" class="nav-link nav-toggle" style="font-weight: 500 !important;">
+                                                        <i class="<?= $module['icon']; ?>" style="font-weight: 500 !important;"></i>
+                                                        <span class="title"><?= $module['name']; ?></span>
+                                                        <span class="arrow <?= ( (strtolower(Yii::$app->controller->module->id) == str_replace("-","",strtolower($module['name']))) && ($activegroupmenu['menu_group_id']==$menugroup['menu_group_id']) )?"open":""; ?>"></span>
+                                                    </a>
+                                                    <?php
+                                                    $select = 'm_menu.menu_id,m_menu.name,m_menu.url';
+                                                    if(Yii::$app->user->identity->user_group_id == \app\components\Params::USER_GROUP_ID_SUPER_USER){
+                                                        $query = "
+                                                            SELECT $select FROM m_menu
+                                                            WHERE m_menu.menu_group_id = ".$menugroup['menu_group_id']."
+                                                                AND m_menu.module_id = ".$module['module_id']."
+                                                                AND m_menu.active = TRUE
+                                                            GROUP BY $select
+                                                            ORDER BY m_menu.sequence ASC
+                                                        ";
+                                                    }else{
+                                                        $query = "
+                                                            SELECT $select FROM m_user_access
+                                                            JOIN m_menu ON m_menu.menu_id=m_user_access.menu_id
+                                                            WHERE m_menu.menu_group_id = ".$menugroup['menu_group_id']."
+                                                                AND m_menu.module_id = ".$module['module_id']."
+                                                                AND m_menu.active = TRUE
+                                                                AND m_user_access.user_group_id = ".Yii::$app->user->identity->user_group_id." 
+                                                            GROUP BY $select
+                                                            ORDER BY m_menu.sequence ASC
+                                                        ";
+                                                    }
+                                                    $menus = Yii::$app->db->createCommand($query)->queryAll();
+                                                    ?>
+                                                    <ul class="sub-menu" style="display:<?= ( (strtolower(Yii::$app->controller->module->id) == str_replace("-","",strtolower($module['name']))) && ($activegroupmenu['menu_group_id']==$menugroup['menu_group_id']) )?"block":""; ?>;">
+                                                        <?php foreach($menus as $i => $menu){ ?>
+                                                        <?php $sel = strpos($menu['url'], '/'.Yii::$app->controller->id.'/'.Yii::$app->controller->action->id); ?>
+                                                        <li class="nav-item <?php echo ($sel == true)?'active ':''; echo "menu-".$menu['menu_id']; ?>">
+                                                            <a href="<?= Url::toRoute($menu['url']); ?>" class="nav-link " id="<?= $menu['url'] ?>" style="font-weight: 300 !important; font-size: 0.9em;">
+                                                                &nbsp;- &nbsp; <span class="title"><?= $menu['name']; ?></span>
+                                                            </a>
+                                                        </li>
+                                                        <?php } ?>
+                                                    </ul>
+                                                </li>
+                                                <?php } ?>
+                                            </ul>    
+                                        <?php }else{ ?>
+                                        <?php $module = $modules[0]; ?>
+                                            <?php
+                                            if(Yii::$app->user->identity->user_group_id == \app\components\Params::USER_GROUP_ID_SUPER_USER){
+                                                $query = "
+                                                    SELECT m_menu.menu_id,m_menu.name,m_menu.url FROM m_menu
+                                                    WHERE m_menu.menu_group_id = ".$menugroup['menu_group_id']."
+                                                        AND m_menu.module_id = ".$module['module_id']."
+                                                        AND m_menu.active = TRUE
+                                                    GROUP BY m_menu.menu_id,m_menu.name,m_menu.url
+                                                    ORDER BY m_menu.sequence ASC
+                                                ";
+                                            }else{
+                                                $query = "
+                                                    SELECT m_menu.menu_id,m_menu.name,m_menu.url FROM m_user_access
+                                                    JOIN m_menu ON m_menu.menu_id=m_user_access.menu_id
+                                                    WHERE m_menu.menu_group_id = ".$menugroup['menu_group_id']."
+                                                        AND m_menu.module_id = ".$module['module_id']."
+                                                        AND m_menu.active = TRUE
+                                                        AND m_user_access.user_group_id = ".Yii::$app->user->identity->user_group_id." 
+                                                    GROUP BY m_menu.menu_id,m_menu.name,m_menu.url
+                                                    ORDER BY m_menu.sequence ASC
+                                                ";
+                                            }
+                                            $menus = Yii::$app->db->createCommand($query)->queryAll();
+                                            ?>
+                                            <ul class="sub-menu" style="display:<?= ($activegroupmenu['menu_group_id']==$menugroup['menu_group_id'])?"block":""; ?>;">
+                                                <?php foreach($menus as $i => $menu){ ?>
+                                                <?php $sel = strpos($menu['url'], '/'.Yii::$app->controller->id.'/'.Yii::$app->controller->action->id); ?>
+                                                <li class="nav-item <?php echo ($sel == true)?'active ':''; echo "menu-".$menu['menu_id']; ?>">
+                                                    <a href="<?= Url::toRoute($menu['url']); ?>" class="nav-link " id="<?= $menu['url'] ?>" style="font-weight: 300 !important; font-size: 0.9em;">
+                                                        &nbsp;-&nbsp; <span class="title"><?= $menu['name']; ?></span>
+                                                    </a>
+                                                </li>
+                                                <?php } ?>
+                                            </ul>
+                                        <?php } ?>
+                                    <?php }else{ ?>
+                                        <?php
+                                        if(Yii::$app->user->identity->user_group_id == \app\components\Params::USER_GROUP_ID_SUPER_USER){
+                                            $query = "
+                                                SELECT m_menu.menu_id,m_menu.name,m_menu.url FROM m_menu
+                                                WHERE m_menu.menu_group_id = ".\app\components\Params::MENU_GROUP_ID_KONFIGURASI."
+                                                    AND m_menu.module_id = ".\app\components\Params::MODULE_ID_ADMINISTRATOR."
+                                                    AND m_menu.active = TRUE
+                                                GROUP BY m_menu.menu_id,m_menu.name,m_menu.url
+                                                ORDER BY m_menu.sequence ASC
+                                            ";
+                                        }else{
+                                            $query = "
+                                                SELECT m_menu.menu_id,m_menu.name,m_menu.url FROM m_user_access
+                                                JOIN m_menu ON m_menu.menu_id=m_user_access.menu_id
+                                                WHERE m_menu.menu_group_id = ".$menugroup['menu_group_id']."
+                                                    AND m_menu.module_id = ".$module['module_id']."
+                                                    AND m_menu.active = TRUE
+                                                    AND m_user_access.user_group_id = ".Yii::$app->user->identity->user_group_id." 
+                                                GROUP BY m_menu.menu_id,m_menu.name,m_menu.url
+                                                ORDER BY m_menu.sequence ASC
+                                            ";
+                                        }
+                                        $menus = Yii::$app->db->createCommand($query)->queryAll();
+                                        ?>
+                                        <ul class="sub-menu" style="display:<?= ($activegroupmenu['menu_group_id']==$menugroup['menu_group_id'])?"block":""; ?>;">
+                                            <?php foreach($menus as $i => $menu){ ?>
+                                            <?php $sel = strpos($menu['url'], '/'.Yii::$app->controller->id.'/'.Yii::$app->controller->action->id); ?>
+                                            <li class="nav-item <?php echo ($sel == true)?'active ':''; echo "menu-".$menu['menu_id']; ?>">
+                                                <a href="<?= Url::toRoute($menu['url']); ?>" class="nav-link " id="<?= $menu['url'] ?>" style="font-weight: 300 !important; font-size: 0.9em;">
+                                                    &nbsp;-&nbsp; <span class="title"><?= $menu['name']; ?></span>
+                                                </a>
+                                            </li>
+                                            <?php } ?>
+                                        </ul>
+                                    <?php } ?>
+                                </li>
+                            <?php } ?>
+                        <?php } ?>
+                    </ul>
+                    <!-- END SIDEBAR MENU -->
+                    <!-- END SIDEBAR MENU -->
+                </div>
+                <!-- END SIDEBAR -->
+            </div>
+            <!-- END SIDEBAR -->
+            <!-- BEGIN CONTENT -->
+            <div class="page-content-wrapper">
+                <!-- BEGIN CONTENT BODY -->
+                <div class="page-content">
+                    <?= $content ?>
+                </div>
+                <!-- END CONTENT BODY -->
+            </div>
+            <!-- END CONTENT -->
+        </div>
+        <!-- END CONTAINER -->
+        <!-- BEGIN FOOTER -->
+        <div class="page-footer">
+            <div class="page-footer-inner">
+                <div class="copyright" style="font-size: 1rem;"> <?= " &copy; 2018 - ".date("Y")." Hak Cipta <b>IT Dept - PT. Cipta Wijaya Mandiri</b>" ?></div>
+            </div>
+            <div class="scroll-to-top">
+                <i class="icon-arrow-up"></i>
+            </div>
+        </div>
+		<div class="modals-place-3-min"></div>
+		<div class="modals-place-2-min"></div>
+        <div class="modals-place"></div>
+        <div class="modals-place-2"></div>
+        <div class="modals-place-3"></div>
+        <div class="modals-place-confirm"></div>
+        <!-- END FOOTER -->
+</div>
+<script>
+function opennotif(){
+	openModal('<?= \yii\helpers\Url::toRoute('/sysadmin/notifikasi/show') ?>','modal-notif');
+}
+</script>
+<?php $this->registerJsFile($this->theme->baseUrl."/layouts/layout/scripts/layout.min.js",['depends'=>[yii\web\YiiAsset::className()]]) ?>
+
+<?php $this->endBody() ?>
+<script type="text/javascript">
+    document.write("</BO"+"DY>"+"</HT"+"ML>");
+</script>
+<!--</BODY>
+</HTML>-->
+<?php $this->endPage() ?>

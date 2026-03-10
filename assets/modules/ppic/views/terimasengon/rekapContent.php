@@ -1,0 +1,201 @@
+<div class="table-scrollable">
+<table class="table table-striped table-bordered table-hover" id="table-laporan">
+    <thead>
+        <tr>
+            <th rowspan="3" style="line-height: 1; width: 30px;">No.</th>
+            <th rowspan="3" style="line-height: 1; width: 100px;">Suplier</th>
+            <th rowspan="3" style="line-height: 1; width: 80px;">Kode /<br>Tanggal<br>Terima</th>
+            <th rowspan="3" style="line-height: 1;">Asal Kayu</th>
+            <th rowspan="3" style="line-height: 1; width: 80px;">Nopol<br>Truck</th>
+            <th colspan="2">Nota Angkut</th>
+            <th colspan="5">Panjang 100 cm</th>
+            <th colspan="5">Panjang 130 cm</th>
+            <th colspan="5">Panjang 200 cm</th>
+            <th colspan="5">Panjang 260 cm</th>
+            <th rowspan="2" colspan="2">Total Terima</th>
+            <th rowspan="2" colspan="2">Total Afkir</th>
+            <th rowspan="2" colspan="2" style="line-height: 1; text-align: center;">Total Semua<br><span style="font-size: 1.1rem">(Terima & Afkir)</span></th>
+        </tr>
+        <tr>
+            <th colspan="2">Total</th>
+            <th colspan="3">Diameter</th>
+            <th colspan="2">Total</th>
+            <th colspan="3">Diameter</th>
+            <th colspan="2">Total</th>
+            <th colspan="3">Diameter</th>
+            <th colspan="2">Total</th>
+            <th colspan="3">Diameter</th>
+            <th colspan="2">Total</th>
+        </tr>
+        <tr>
+            <th style="line-height: 1; width: 50px; font-size: 1.2rem;">Pcs</th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">M<sup>3</sup></th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">19-24</th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">25-29</th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">30-40</th>
+
+            <th style="width: 50px; font-size: 1.2rem">Pcs</th>
+            <th style="width: 60px; font-size: 1.2rem">M<sup>3</sup></th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">19-24</th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">25-29</th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">30-40</th>
+
+            <th style="width: 50px; font-size: 1.2rem">Pcs</th>
+            <th style="width: 60px; font-size: 1.2rem">M<sup>3</sup></th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">19-24</th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">25-29</th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">30-40</th>
+
+            <th style="width: 50px; font-size: 1.2rem">Pcs</th>
+            <th style="width: 60px; font-size: 1.2rem">M<sup>3</sup></th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">19-24</th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">25-29</th>
+            <th style="line-height: 1; width: 60px; font-size: 1.2rem;">30-40</th>
+
+            <th style="width: 50px; font-size: 1.2rem">Pcs</th>
+            <th style="width: 60px; font-size: 1.2rem">M<sup>3</sup></th>
+            <th style="width: 50px; font-size: 1.2rem">Pcs</th>
+            <th style="width: 70px; font-size: 1.2rem">M<sup>3</sup></th>
+            <th style="width: 50px; font-size: 1.2rem">Pcs</th>
+            <th style="width: 60px; font-size: 1.2rem">M<sup>3</sup></th>
+            <th style="width: 50px; font-size: 1.2rem">Pcs</th>
+            <th style="width: 70px; font-size: 1.2rem">M<sup>3</sup></th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php
+        if(isset($detailrekap)){
+            $sql = "SELECT * FROM t_terima_sengon 
+                    JOIN m_suplier ON m_suplier.suplier_id = t_terima_sengon.suplier_id
+                    WHERE posengon_id = ".$model->posengon_id." 
+                    ORDER BY t_terima_sengon.created_at ASC";
+            $model = \Yii::$app->db->createCommand($sql)->queryAll();
+        }else{
+            $sql = "SELECT * FROM t_terima_sengon 
+                    JOIN m_suplier ON m_suplier.suplier_id = t_terima_sengon.suplier_id
+                    WHERE t_terima_sengon.tanggal BETWEEN '".$model->tgl_awal."' AND '".$model->tgl_akhir."' " 
+                    .( !empty($model->suplier_id)?" AND t_terima_sengon.suplier_id = ".$model->suplier_id:"" )." 
+                    ORDER BY t_terima_sengon.created_at ASC";
+            $model = \Yii::$app->db->createCommand($sql)->queryAll();
+        }
+        
+        if(count($model)>0){
+            foreach($model as $i => $mod){
+
+            $sql_kabeeeh = "SELECT SUM(qty_pcs) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 100";
+            $sql_kabeeh = "SELECT SUM(qty_pcs) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 130";            
+            $sql_kabeh = "SELECT SUM(qty_pcs) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 260";
+
+            $kabeeeh = Yii::$app->db->createCommand($sql_kabeeeh)->queryOne();
+            $kabeeh = Yii::$app->db->createCommand($sql_kabeeh)->queryOne();
+            $kabeh = Yii::$app->db->createCommand($sql_kabeh)->queryOne();
+
+        ?>
+        <tr>
+            <td style="text-align: center; font-size: 1.1rem; font-weight: 500;"><?= ($i+1) ?></td>
+            <td style="line-height: 1; text-align: left; padding-left: 5px; font-size: 1.1rem; "><?= $mod['suplier_nm'] ?></td>
+            <td style="line-height: 1; text-align: left; font-size: 1.1rem;">
+                <?= "<b>".$mod['kode']."</b>" ?>
+                <?= \app\components\DeltaFormatter::formatDateTimeForUser2($mod['tanggal']) ?>
+            </td>
+            <td style="line-height: 1; text-align: left; padding-left: 5px; font-size: 1.1rem;"><?= $mod['asal_kayu'] ?><br><?php echo $kabeeeh['pcs'].' '.$kabeeh['pcs'].' '.$kabeh['pcs'];?></td>
+            <td style="line-height: 1; text-align: left; padding-left: 5px; font-size: 1.1rem;"><?= $mod['nopol'] ?></td>
+            <td style="text-align: right; padding-right: 5px; font-size: 1.1rem;"><?= number_format($mod['total_notaangkut_pcs']) ?></td>
+            <td style="text-align: right; padding-right: 5px; font-size: 1.1rem;"><?= number_format($mod['total_notaangkut_m3'],3) ?></td>
+            <?php
+            
+            // 100 cm
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 100 AND diameter >= 19 and diameter <= 24";
+            $dia_100_19_24 = Yii::$app->db->createCommand($sql)->queryOne();
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 100 AND diameter >= 25 and diameter <= 29";
+            $dia_100_25_29 = Yii::$app->db->createCommand($sql)->queryOne();
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 100 AND diameter >= 30 and diameter <= 40";
+            $dia_100_30_40 = Yii::$app->db->createCommand($sql)->queryOne();
+            $total_pcs_100 = $dia_100_19_24['pcs'] + $dia_100_25_29['pcs'] + $dia_100_30_40['pcs'];
+            $total_m3_100 = $dia_100_19_24['m3'] + $dia_100_25_29['m3'] + $dia_100_30_40['m3'];
+
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_100_19_24['m3']!=0 )? number_format($dia_100_19_24['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_100_25_29['m3']!=0 )? number_format($dia_100_25_29['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_100_30_40['m3']!=0 )? number_format($dia_100_30_40['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_pcs_100!=0 )? $total_pcs_100:"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_m3_100!=0 )? number_format($total_m3_100,3):"-").'</td>';
+            // end 100 cm
+            
+            // 130 cm
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 130 AND diameter >= 19 and diameter <= 24";
+            $dia_130_19_24 = Yii::$app->db->createCommand($sql)->queryOne();
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 130 AND diameter >= 25 and diameter <= 29";
+            $dia_130_25_29 = Yii::$app->db->createCommand($sql)->queryOne();
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 130 AND diameter >= 30 and diameter <= 40";
+            $dia_130_30_40 = Yii::$app->db->createCommand($sql)->queryOne();
+            $total_pcs_130 = $dia_130_19_24['pcs'] + $dia_130_25_29['pcs'] + $dia_130_30_40['pcs'];
+            $total_m3_130 = $dia_130_19_24['m3'] + $dia_130_25_29['m3'] + $dia_130_30_40['m3'];
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_130_19_24['m3']!=0 )? number_format($dia_130_19_24['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_130_25_29['m3']!=0 )? number_format($dia_130_25_29['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_130_30_40['m3']!=0 )? number_format($dia_130_30_40['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_pcs_130!=0 )? $total_pcs_130:"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_m3_130!=0 )? number_format($total_m3_130,3):"-").'</td>';
+            // end 130 cm
+            
+            // 200 cm
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 200 AND diameter >= 19 and diameter <= 24";
+            $dia_200_19_24 = Yii::$app->db->createCommand($sql)->queryOne();
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 200 AND diameter >= 25 and diameter <= 29";
+            $dia_200_25_29 = Yii::$app->db->createCommand($sql)->queryOne();
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 200 AND diameter >= 30 and diameter <= 40";
+            $dia_200_30_40 = Yii::$app->db->createCommand($sql)->queryOne();
+            $total_pcs_200 = $dia_200_19_24['pcs'] + $dia_200_25_29['pcs'] + $dia_200_30_40['pcs'];
+            $total_m3_200 = $dia_200_19_24['m3'] + $dia_200_25_29['m3'] + $dia_200_30_40['m3'];
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_200_19_24['m3']!=0 )? number_format($dia_200_19_24['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_200_25_29['m3']!=0 )? number_format($dia_200_25_29['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_200_30_40['m3']!=0 )? number_format($dia_200_30_40['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_pcs_200!=0 )? $total_pcs_200:"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_m3_200!=0 )? number_format($total_m3_200,3):"-").'</td>';
+            // end 200 cm
+            
+            // 260 cm
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 260 AND diameter >= 19 and diameter <= 24";
+            //echo "<br>qty 19 24".$sql;
+            $dia_260_19_24 = Yii::$app->db->createCommand($sql)->queryOne();
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 260 AND diameter >= 25 and diameter <= 29";
+            //echo "<br>qty 25 29".$sql;
+            $dia_260_25_29 = Yii::$app->db->createCommand($sql)->queryOne();
+            $sql = "SELECT SUM(qty_m3) AS m3, sum(qty_pcs) AS pcs FROM t_terima_sengon_detail WHERE terima_sengon_id = ".$mod['terima_sengon_id']." AND panjang = 260 AND diameter >= 30 and diameter <= 40";
+            //echo "<br>qty 30 40".$sql;
+            $dia_260_30_40 = Yii::$app->db->createCommand($sql)->queryOne();
+            $total_pcs_260 = $dia_260_19_24['pcs'] + $dia_260_25_29['pcs'] + $dia_260_30_40['pcs'];
+            $total_m3_260 = $dia_260_19_24['m3'] + $dia_260_25_29['m3'] + $dia_260_30_40['m3'];
+
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_260_19_24['m3']!=0 )? number_format($dia_260_19_24['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_260_25_29['m3']!=0 )? number_format($dia_260_25_29['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $dia_260_30_40['m3']!=0 )? number_format($dia_260_30_40['m3'],3):"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_pcs_260!=0 )? $total_pcs_260:"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_m3_260!=0 )? number_format($total_m3_260,3):"-").'</td>';
+            // end 260 cm
+            
+            $sql = "SELECT SUM(qty_pcs) AS pcs, SUM(qty_m3) AS m3 FROM t_afkir_sengon WHERE terima_sengon_id = ".$mod['terima_sengon_id'];
+            $total_afkir = Yii::$app->db->createCommand($sql)->queryOne();
+            $total_pcs_afkir = isset($total_afkir['pcs'])?$total_afkir['pcs']:0;
+            $total_m3_afkir = isset($total_afkir['m3'])?$total_afkir['m3']:0;
+
+            $total_pcs_terima = ($total_pcs_100 + $total_pcs_130 + $total_pcs_200 + $total_pcs_260);// - $total_pcs_afkir;
+            $total_m3_terima = ($total_m3_100 + $total_m3_130 + $total_m3_200 + $total_m3_260);// - $total_m3_afkir;
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_pcs_terima!=0 )? $total_pcs_terima:"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_m3_terima!=0 )? number_format($total_m3_terima,3):"-").'</td>';
+            
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_pcs_afkir!=0 )? $total_pcs_afkir:"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_m3_afkir!=0 )? number_format($total_m3_afkir,3):"-").'</td>';
+            
+            $total_pcs_semua = $total_pcs_terima + $total_pcs_afkir;
+            $total_m3_semua = $total_m3_terima + $total_m3_afkir;
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_pcs_semua!=0 )? $total_pcs_semua:"-").'</td>';
+            echo '<td style="text-align: right; padding-right: 5px; font-size: 1.1rem;">'.(( $total_m3_semua!=0 )? number_format($total_m3_semua,3):"-").'</td>';
+            ?>
+        </tr>
+        <?php
+            }
+        }
+        ?>
+    </tbody>
+</table>
+</div>
